@@ -40,7 +40,27 @@
   * The attributes can be safely erased when compiling with other compilers.
   * https://clang.llvm.org/docs/ThreadSafetyAnalysis.html#mutex-h
   */
-#if defined(__clang__) && defined(_LIBCPP_HAS_THREAD_SAFETY_ANNOTATIONS) && (!defined(SWIG))
+#if defined(__clang__) && (!defined(SWIG)) && defined(__has_include)
+#if __has_include(<version>)
+// Pull in the standard library configuration, so the libc++ macros below are defined.
+#include <version>
+#endif
+#endif
+
+// Enable the attributes exactly when libc++ annotates std::mutex:
+// - libc++ >= 21 always annotates it, through _LIBCPP_CAPABILITY;
+// - libc++ 20 defines _LIBCPP_HAS_THREAD_SAFETY_ANNOTATIONS as 1 (annotated) or 0 (not annotated);
+// - libc++ <= 19 defines _LIBCPP_HAS_THREAD_SAFETY_ANNOTATIONS (empty) only when annotated.
+#if defined(__clang__) && (!defined(SWIG)) && defined(_LIBCPP_CAPABILITY)
+#define RCPPUTILS_LIBCXX_THREAD_SAFETY_ANNOTATIONS
+#elif defined(__clang__) && (!defined(SWIG)) && defined(_LIBCPP_HAS_THREAD_SAFETY_ANNOTATIONS)
+#if ((0 - _LIBCPP_HAS_THREAD_SAFETY_ANNOTATIONS - 1) == 1) || \
+  ((_LIBCPP_HAS_THREAD_SAFETY_ANNOTATIONS + 0) == 1)
+#define RCPPUTILS_LIBCXX_THREAD_SAFETY_ANNOTATIONS
+#endif
+#endif
+
+#if defined(RCPPUTILS_LIBCXX_THREAD_SAFETY_ANNOTATIONS)
 #define RCPPUTILS_THREAD_ANNOTATION_ATTRIBUTE_IMPL(x)   __attribute__((x))
 #else
 #define RCPPUTILS_THREAD_ANNOTATION_ATTRIBUTE_IMPL(x)   // no-op
